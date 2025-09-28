@@ -1,0 +1,676 @@
+{
+  "info": {
+    "name": "Logistics & Courier Tracking API",
+    "description": "Complete API collection for logistics and courier tracking system",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"phone\": \"+1234567890\",\n  \"password\": \"password123\",\n  \"role\": \"customer\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@logistics.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('jwt_token', response.token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/profile",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "profile"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Shipments",
+      "item": [
+        {
+          "name": "Create Shipment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"consignee_city\": \"Los Angeles\",\n  \"postal_code\": \"90210\",\n  \"package_count\": 2,\n  \"package_weight\": 5.5,\n  \"net_total\": 125.00,\n  \"contents_description\": \"Electronics and documents\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/shipments",
+              "host": ["{{base_url}}"],
+              "path": ["shipments"]
+            }
+          }
+        },
+        {
+          "name": "Get My Shipments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/shipments?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["shipments"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Shipment by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/shipments/1",
+              "host": ["{{base_url}}"],
+              "path": ["shipments", "1"]
+            }
+          }
+        },
+        {
+          "name": "Update Shipment",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"consignee_city\": \"San Francisco\",\n  \"postal_code\": \"94102\",\n  \"package_count\": 3,\n  \"package_weight\": 7.2,\n  \"net_total\": 150.00,\n  \"contents_description\": \"Updated electronics and documents\",\n  \"status\": \"In Transit\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/shipments/1",
+              "host": ["{{base_url}}"],
+              "path": ["shipments", "1"]
+            }
+          }
+        },
+        {
+          "name": "Cancel Shipment",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/shipments/1",
+              "host": ["{{base_url}}"],
+              "path": ["shipments", "1"]
+            }
+          }
+        },
+        {
+          "name": "Get All Shipments (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/shipments/admin/all?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["shipments", "admin", "all"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tracking",
+      "item": [
+        {
+          "name": "Get Tracking History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/tracking/1",
+              "host": ["{{base_url}}"],
+              "path": ["tracking", "1"]
+            }
+          }
+        },
+        {
+          "name": "Get Real-time Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/tracking/1/status",
+              "host": ["{{base_url}}"],
+              "path": ["tracking", "1", "status"]
+            }
+          }
+        },
+        {
+          "name": "Add Tracking Update (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_location\": \"Package arrived at Los Angeles hub\",\n  \"status_update\": \"At Hub\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tracking/1",
+              "host": ["{{base_url}}"],
+              "path": ["tracking", "1"]
+            }
+          }
+        },
+        {
+          "name": "Get Active Shipments (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/tracking/admin/active?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["tracking", "admin", "active"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Bulk Tracking Update (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"updates\": [\n    {\n      \"shipment_id\": 1,\n      \"current_location\": \"Package out for delivery\",\n      \"status_update\": \"Out for Delivery\"\n    },\n    {\n      \"shipment_id\": 2,\n      \"current_location\": \"Package delivered\",\n      \"status_update\": \"Delivered\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tracking/bulk-update",
+              "host": ["{{base_url}}"],
+              "path": ["tracking", "bulk-update"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Branches",
+      "item": [
+        {
+          "name": "Get All Branches",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/branches?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["branches"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Branch by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/branches/1",
+              "host": ["{{base_url}}"],
+              "path": ["branches", "1"]
+            }
+          }
+        },
+        {
+          "name": "Search Branches by Location",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/branches/search/location?city=New York&state=NY",
+              "host": ["{{base_url}}"],
+              "path": ["branches", "search", "location"],
+              "query": [
+                {
+                  "key": "city",
+                  "value": "New York"
+                },
+                {
+                  "key": "state",
+                  "value": "NY"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Branch (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branch_name\": \"New Distribution Center\",\n  \"address\": \"456 Logistics Ave, Suite 200\",\n  \"city\": \"Chicago\",\n  \"state\": \"IL\",\n  \"phone\": \"+1312555123\",\n  \"working_hours\": \"Mon-Fri: 7AM-7PM, Sat: 8AM-5PM\",\n  \"branch_type\": \"Main\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/branches",
+              "host": ["{{base_url}}"],
+              "path": ["branches"]
+            }
+          }
+        },
+        {
+          "name": "Update Branch (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branch_name\": \"Updated Distribution Center\",\n  \"address\": \"456 Logistics Ave, Suite 300\",\n  \"city\": \"Chicago\",\n  \"state\": \"IL\",\n  \"phone\": \"+1312555123\",\n  \"working_hours\": \"Mon-Fri: 6AM-8PM, Sat: 8AM-6PM\",\n  \"branch_type\": \"Main\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/branches/1",
+              "host": ["{{base_url}}"],
+              "path": ["branches", "1"]
+            }
+          }
+        },
+        {
+          "name": "Delete Branch (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/branches/1",
+              "host": ["{{base_url}}"],
+              "path": ["branches", "1"]
+            }
+          }
+        },
+        {
+          "name": "Get Branch Statistics (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/branches/admin/statistics",
+              "host": ["{{base_url}}"],
+              "path": ["branches", "admin", "statistics"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Support",
+      "item": [
+        {
+          "name": "Create Support Ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subject\": \"Delivery delay inquiry\",\n  \"description\": \"My package was supposed to be delivered yesterday but I haven't received it yet. Can you please check the status?\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/support",
+              "host": ["{{base_url}}"],
+              "path": ["support"]
+            }
+          }
+        },
+        {
+          "name": "Get My Support Tickets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/support/my-tickets?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["support", "my-tickets"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Support Ticket by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/support/1",
+              "host": ["{{base_url}}"],
+              "path": ["support", "1"]
+            }
+          }
+        },
+        {
+          "name": "Update Support Ticket Status (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Closed\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/support/1",
+              "host": ["{{base_url}}"],
+              "path": ["support", "1"]
+            }
+          }
+        },
+        {
+          "name": "Get All Support Tickets (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/support/admin/all?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["support", "admin", "all"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Support Statistics (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/support/admin/statistics",
+              "host": ["{{base_url}}"],
+              "path": ["support", "admin", "statistics"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Update Support Tickets (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticket_ids\": [1, 2, 3],\n  \"status\": \"Closed\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/support/admin/bulk-update",
+              "host": ["{{base_url}}"],
+              "path": ["support", "admin", "bulk-update"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Get Dashboard Overview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/dashboard",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "dashboard"]
+            }
+          }
+        },
+        {
+          "name": "Get Shipment Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/analytics/shipments?period=30",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "analytics", "shipments"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "30"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/analytics/users?period=30",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "analytics", "users"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "30"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "System Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/health",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "health"]
+            }
+          }
+        },
+        {
+          "name": "Export Users Data",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/export/users?format=json",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "export", "users"],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Export Shipments Data",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/export/shipments?format=csv",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "export", "shipments"],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "csv"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
