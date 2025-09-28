@@ -13,7 +13,7 @@ interface Order {
   customerName: string
   origin: string
   destination: string
-  status: "pending" | "picked-up" | "in-transit" | "delivered" | "cancelled"
+  status: "Booked" | "In Transit" | "Delivered" | "Cancelled"
   createdAt: string
 }
 
@@ -23,7 +23,7 @@ export function OrderTracker() {
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
-  const trackOrder = () => {
+  const trackOrder = async () => {
     if (!trackingId.trim()) {
       setError("Please enter a tracking ID")
       return
@@ -31,38 +31,42 @@ export function OrderTracker() {
 
     setIsLoading(true)
     setError("")
+    setOrder(null)
 
-    // Get orders from localStorage (admin-created orders)
-    const savedOrders = localStorage.getItem("adminOrders")
-    if (savedOrders) {
-      const orders: Order[] = JSON.parse(savedOrders)
-      const foundOrder = orders.find((o) => o.id.toLowerCase() === trackingId.toLowerCase())
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/shipments/${trackingId}`)
 
-      if (foundOrder) {
-        setOrder(foundOrder)
-      } else {
-        setError("Order not found. Please check your tracking ID.")
-        setOrder(null)
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || "Order not found. Please check your tracking ID.")
       }
-    } else {
-      setError("Order not found. Please check your tracking ID.")
-      setOrder(null)
-    }
 
-    setIsLoading(false)
+      const shipmentData = await response.json()
+      const formattedOrder: Order = {
+        id: shipmentData.trackingId,
+        customerName: shipmentData.customerName || "N/A",
+        origin: shipmentData.pickupAddress,
+        destination: shipmentData.deliveryAddress,
+        status: shipmentData.status,
+        createdAt: shipmentData.createdAt,
+      }
+      setOrder(formattedOrder)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const getStatusIcon = (status: Order["status"]) => {
     switch (status) {
-      case "pending":
+      case "Booked":
         return <Clock className="w-5 h-5" />
-      case "picked-up":
-        return <Package className="w-5 h-5" />
-      case "in-transit":
+      case "In Transit":
         return <MapPin className="w-5 h-5" />
-      case "delivered":
+      case "Delivered":
         return <CheckCircle className="w-5 h-5" />
-      case "cancelled":
+      case "Cancelled":
         return <Package className="w-5 h-5" />
       default:
         return <Clock className="w-5 h-5" />
@@ -71,15 +75,13 @@ export function OrderTracker() {
 
   const getStatusColor = (status: Order["status"]) => {
     switch (status) {
-      case "pending":
+      case "Booked":
         return "bg-yellow-500"
-      case "picked-up":
+      case "In Transit":
         return "bg-blue-500"
-      case "in-transit":
-        return "bg-purple-500"
-      case "delivered":
+      case "Delivered":
         return "bg-green-500"
-      case "cancelled":
+      case "Cancelled":
         return "bg-red-500"
       default:
         return "bg-gray-500"
@@ -88,15 +90,13 @@ export function OrderTracker() {
 
   const getStatusDescription = (status: Order["status"]) => {
     switch (status) {
-      case "pending":
-        return "Your order has been received and is being processed."
-      case "picked-up":
-        return "Your package has been picked up and is ready for transit."
-      case "in-transit":
+      case "Booked":
+        return "Your order has been booked and is pending pickup."
+      case "In Transit":
         return "Your package is on its way to the destination."
-      case "delivered":
+      case "Delivered":
         return "Your package has been successfully delivered."
-      case "cancelled":
+      case "Cancelled":
         return "This order has been cancelled."
       default:
         return "Status unknown."

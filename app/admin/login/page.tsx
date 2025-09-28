@@ -13,8 +13,8 @@ import { motion } from "framer-motion"
 
 export default function AdminLogin() {
   const router = useRouter()
-  const [username, setUsername] = useState("")
-  const [password, setPassword] = useState("")
+  const [email, setEmail] = useState("admin@logistics.com")
+  const [password, setPassword] = useState("admin123")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
@@ -23,18 +23,32 @@ export default function AdminLogin() {
     setIsLoading(true)
     setError("")
 
-    // Simple hardcoded authentication for demo
-    // In production, this should be replaced with proper authentication
-    if (username === "admin" && password === "fastflyer2024") {
-      // Store admin session
-      localStorage.setItem("adminAuth", "true")
-      localStorage.setItem("adminUser", username)
-      router.push("/admin/dashboard")
-    } else {
-      setError("Invalid username or password")
-    }
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      })
 
-    setIsLoading(false)
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || "Login failed. Please check your credentials.")
+      }
+
+      if (data.user.role !== "admin") {
+        throw new Error("Access denied. You do not have admin privileges.")
+      }
+
+      // Store the token and user info
+      localStorage.setItem("adminToken", data.token)
+      localStorage.setItem("adminUser", JSON.stringify(data.user))
+      router.push("/admin/dashboard")
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -48,13 +62,13 @@ export default function AdminLogin() {
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="email">Email</Label>
                 <Input
-                  id="username"
-                  type="text"
-                  placeholder="Enter admin username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  id="email"
+                  type="email"
+                  placeholder="admin@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                 />
               </div>
@@ -80,8 +94,8 @@ export default function AdminLogin() {
             </form>
             <div className="mt-4 text-sm text-muted-foreground text-center">
               <p>Demo credentials:</p>
-              <p>Username: admin</p>
-              <p>Password: fastflyer2024</p>
+              <p>Email: admin@logistics.com</p>
+              <p>Password: admin123</p>
             </div>
           </CardContent>
         </Card>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,112 +11,135 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { LogOut, Package, Plus } from "lucide-react"
+import { LogOut, Package, Plus, Truck } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
 
-interface Order {
-  id: string
+interface Shipment {
+  shipment_id: number
+  trackingId: string
   customerName: string
-  origin: string
-  destination: string
-  status: "pending" | "picked-up" | "in-transit" | "delivered" | "cancelled"
-  createdAt: string
+  pickupAddress: string
+  deliveryAddress: string
+  status: "Booked" | "In Transit" | "Delivered" | "Cancelled"
+  created_at: string
 }
+
+const statusOptions: Shipment["status"][] = ["Booked", "In Transit", "Delivered", "Cancelled"]
 
 export default function AdminDashboard() {
   const router = useRouter()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [orders, setOrders] = useState<Order[]>([])
-  const [newOrderId, setNewOrderId] = useState("")
-  const [newCustomerName, setNewCustomerName] = useState("")
-  const [newOrigin, setNewOrigin] = useState("")
-  const [newDestination, setNewDestination] = useState("")
-  const [selectedOrderId, setSelectedOrderId] = useState("")
-  const [newStatus, setNewStatus] = useState<Order["status"]>("pending")
+  const [shipments, setShipments] = useState<Shipment[]>([])
   const [message, setMessage] = useState("")
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Form states
+  const [pickupAddress, setPickupAddress] = useState("")
+  const [deliveryAddress, setDeliveryAddress] = useState("")
+  const [weight, setWeight] = useState("")
+  const [shipmentType, setShipmentType] = useState("Package")
+  const [selectedShipmentId, setSelectedShipmentId] = useState<string>("")
+  const [newStatus, setNewStatus] = useState<Shipment["status"]>("Booked")
+
+  const getAuthToken = useCallback(() => {
+    return typeof window !== "undefined" ? localStorage.getItem("adminToken") : null
+  }, [])
+
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem("adminToken")
+    localStorage.removeItem("adminUser")
+    router.push("/admin/login")
+  }, [router])
 
   useEffect(() => {
-    // Check authentication
-    const adminAuth = localStorage.getItem("adminAuth")
-    if (adminAuth !== "true") {
+    const token = getAuthToken()
+    if (!token) {
       router.push("/admin/login")
       return
     }
     setIsAuthenticated(true)
 
-    // Load existing orders from localStorage
-    const savedOrders = localStorage.getItem("adminOrders")
-    if (savedOrders) {
-      setOrders(JSON.parse(savedOrders))
+    const fetchShipments = async () => {
+      setIsLoading(true)
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/shipments/admin/all`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 403) handleLogout()
+          throw new Error("Failed to fetch shipments.")
+        }
+        const data = await response.json()
+        setShipments(data)
+      } catch (error: any) {
+        setMessage(error.message)
+      } finally {
+        setIsLoading(false)
+      }
     }
-  }, [router])
 
-  const handleLogout = () => {
-    localStorage.removeItem("adminAuth")
-    localStorage.removeItem("adminUser")
-    router.push("/admin/login")
-  }
+    fetchShipments()
+  }, [router, getAuthToken, handleLogout])
 
-  const addOrder = () => {
-    if (!newOrderId || !newCustomerName || !newOrigin || !newDestination) {
-      setMessage("Please fill in all fields")
+  const addShipment = async () => {
+    if (!pickupAddress || !deliveryAddress || !weight) {
+      setMessage("Please fill in all fields.")
       return
     }
-
-    const newOrder: Order = {
-      id: newOrderId,
-      customerName: newCustomerName,
-      origin: newOrigin,
-      destination: newDestination,
-      status: "pending",
-      createdAt: new Date().toISOString(),
+    const token = getAuthToken()
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/shipments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          pickupAddress,
+          deliveryAddress,
+          weight: parseFloat(weight),
+          shipmentType,
+          serviceSpeed: "Standard",
+        }),
+      })
+      if (!response.ok) throw new Error((await response.json()).message || "Failed to add shipment.")
+      const newShipment = await response.json()
+      setShipments([newShipment, ...shipments])
+      setMessage(`Shipment added! Tracking ID: ${newShipment.trackingId}`)
+      setPickupAddress("")
+      setDeliveryAddress("")
+      setWeight("")
+    } catch (error: any) {
+      setMessage(error.message)
     }
-
-    const updatedOrders = [...orders, newOrder]
-    setOrders(updatedOrders)
-    localStorage.setItem("adminOrders", JSON.stringify(updatedOrders))
-
-    // Reset form
-    setNewOrderId("")
-    setNewCustomerName("")
-    setNewOrigin("")
-    setNewDestination("")
-    setMessage("Order added successfully!")
   }
 
-  const updateOrderStatus = () => {
-    if (!selectedOrderId || !newStatus) {
-      setMessage("Please select an order and status")
+  const updateShipmentStatus = async () => {
+    if (!selectedShipmentId) {
+      setMessage("Please select a shipment to update.")
       return
     }
-
-    const updatedOrders = orders.map((order) =>
-      order.id === selectedOrderId ? { ...order, status: newStatus } : order,
-    )
-    setOrders(updatedOrders)
-    localStorage.setItem("adminOrders", JSON.stringify(updatedOrders))
-    setMessage("Order status updated successfully!")
-    setSelectedOrderId("")
-  }
-
-  const getStatusColor = (status: Order["status"]) => {
-    switch (status) {
-      case "pending":
-        return "bg-yellow-500"
-      case "picked-up":
-        return "bg-blue-500"
-      case "in-transit":
-        return "bg-purple-500"
-      case "delivered":
-        return "bg-green-500"
-      case "cancelled":
-        return "bg-red-500"
-      default:
-        return "bg-gray-500"
+    const token = getAuthToken()
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/shipments/${selectedShipmentId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: newStatus }),
+      })
+      if (!response.ok) throw new Error((await response.json()).message || "Failed to update status.")
+      const updatedShipment = await response.json()
+      setShipments(shipments.map((s) => (s.shipment_id === updatedShipment.shipment_id ? updatedShipment : s)))
+      setMessage("Shipment status updated!")
+      setSelectedShipmentId("")
+    } catch (error: any) {
+      setMessage(error.message)
     }
   }
 
-  if (!isAuthenticated) {
-    return <div>Loading...</div>
+  const getStatusColor = (status: Shipment["status"]) => {
+    const colors = { Booked: "bg-yellow-500", "In Transit": "bg-blue-500", Delivered: "bg-green-500", Cancelled: "bg-red-500" }
+    return colors[status] || "bg-gray-500"
+  }
+
+  if (!isAuthenticated || isLoading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
   }
 
   return (
@@ -133,51 +156,32 @@ export default function AdminDashboard() {
           </Button>
         </div>
 
-        {message && (
-          <Alert className="mb-6">
-            <AlertDescription>{message}</AlertDescription>
-          </Alert>
-        )}
+        {message && <Alert className="mb-6"><AlertDescription>{message}</AlertDescription></Alert>}
 
         <Tabs defaultValue="orders" className="space-y-6">
           <TabsList>
-            <TabsTrigger value="orders">All Orders</TabsTrigger>
-            <TabsTrigger value="add">Add Order</TabsTrigger>
+            <TabsTrigger value="orders">All Shipments</TabsTrigger>
+            <TabsTrigger value="add">Add Shipment</TabsTrigger>
             <TabsTrigger value="update">Update Status</TabsTrigger>
           </TabsList>
 
           <TabsContent value="orders">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="w-5 h-5" />
-                  Order Management
-                </CardTitle>
-                <CardDescription>View and manage all orders ({orders.length} total)</CardDescription>
+                <CardTitle className="flex items-center gap-2"><Package className="w-5 h-5" />Shipment Management</CardTitle>
+                <CardDescription>View and manage all shipments ({shipments.length} total)</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Order ID</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Origin</TableHead>
-                      <TableHead>Destination</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Created</TableHead>
-                    </TableRow>
-                  </TableHeader>
+                  <TableHeader><TableRow><TableHead>Tracking ID</TableHead><TableHead>Customer</TableHead><TableHead>Destination</TableHead><TableHead>Status</TableHead><TableHead>Created</TableHead></TableRow></TableHeader>
                   <TableBody>
-                    {orders.map((order) => (
-                      <TableRow key={order.id}>
-                        <TableCell className="font-mono">{order.id}</TableCell>
-                        <TableCell>{order.customerName}</TableCell>
-                        <TableCell>{order.origin}</TableCell>
-                        <TableCell>{order.destination}</TableCell>
-                        <TableCell>
-                          <Badge className={getStatusColor(order.status)}>{order.status}</Badge>
-                        </TableCell>
-                        <TableCell>{new Date(order.createdAt).toLocaleDateString()}</TableCell>
+                    {shipments.map((s) => (
+                      <TableRow key={s.shipment_id}>
+                        <TableCell className="font-mono">{s.trackingId}</TableCell>
+                        <TableCell>{s.customerName}</TableCell>
+                        <TableCell>{s.deliveryAddress}</TableCell>
+                        <TableCell><Badge className={getStatusColor(s.status)}>{s.status}</Badge></TableCell>
+                        <TableCell>{new Date(s.created_at).toLocaleDateString()}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -189,56 +193,19 @@ export default function AdminDashboard() {
           <TabsContent value="add">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Plus className="w-5 h-5" />
-                  Add New Order
-                </CardTitle>
-                <CardDescription>Create a new order entry in the system</CardDescription>
+                <CardTitle className="flex items-center gap-2"><Plus className="w-5 h-5" />Add New Shipment</CardTitle>
+                <CardDescription>Create a new shipment entry in the system</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="orderId">Order ID</Label>
-                    <Input
-                      id="orderId"
-                      placeholder="FF-2024-001"
-                      value={newOrderId}
-                      onChange={(e) => setNewOrderId(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="customerName">Customer Name</Label>
-                    <Input
-                      id="customerName"
-                      placeholder="John Doe"
-                      value={newCustomerName}
-                      onChange={(e) => setNewCustomerName(e.target.value)}
-                    />
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2"><Label htmlFor="pickupAddress">Pickup Address</Label><Textarea id="pickupAddress" placeholder="Enter pickup address" value={pickupAddress} onChange={(e) => setPickupAddress(e.target.value)} /></div>
+                  <div className="space-y-2"><Label htmlFor="deliveryAddress">Delivery Address</Label><Textarea id="deliveryAddress" placeholder="Enter delivery address" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="origin">Origin</Label>
-                    <Input
-                      id="origin"
-                      placeholder="Mumbai, 400001"
-                      value={newOrigin}
-                      onChange={(e) => setNewOrigin(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="destination">Destination</Label>
-                    <Input
-                      id="destination"
-                      placeholder="Delhi, 110001"
-                      value={newDestination}
-                      onChange={(e) => setNewDestination(e.target.value)}
-                    />
-                  </div>
+                  <div className="space-y-2"><Label htmlFor="weight">Weight (kg)</Label><Input id="weight" type="number" placeholder="e.g., 2.5" value={weight} onChange={(e) => setWeight(e.target.value)} /></div>
+                  <div className="space-y-2"><Label htmlFor="shipmentType">Shipment Type</Label><Input id="shipmentType" placeholder="e.g., Package" value={shipmentType} onChange={(e) => setShipmentType(e.target.value)} /></div>
                 </div>
-                <Button onClick={addOrder} className="w-full">
-                  Add Order
-                </Button>
+                <Button onClick={addShipment} className="w-full">Add Shipment</Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -246,43 +213,29 @@ export default function AdminDashboard() {
           <TabsContent value="update">
             <Card>
               <CardHeader>
-                <CardTitle>Update Order Status</CardTitle>
-                <CardDescription>Change the status of existing orders</CardDescription>
+                <CardTitle className="flex items-center gap-2"><Truck className="w-5 h-5" />Update Shipment Status</CardTitle>
+                <CardDescription>Change the status of an existing shipment</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="selectOrder">Select Order</Label>
-                  <Select value={selectedOrderId} onValueChange={setSelectedOrderId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose an order to update" />
-                    </SelectTrigger>
+                  <Label htmlFor="selectShipment">Select Shipment</Label>
+                  <Select value={selectedShipmentId} onValueChange={setSelectedShipmentId}>
+                    <SelectTrigger><SelectValue placeholder="Choose a shipment to update" /></SelectTrigger>
                     <SelectContent>
-                      {orders.map((order) => (
-                        <SelectItem key={order.id} value={order.id}>
-                          {order.id} - {order.customerName}
-                        </SelectItem>
-                      ))}
+                      {shipments.map((s) => (<SelectItem key={s.shipment_id} value={String(s.shipment_id)}>{s.trackingId} - {s.customerName}</SelectItem>))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="selectStatus">New Status</Label>
-                  <Select value={newStatus} onValueChange={(value: Order["status"]) => setNewStatus(value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select new status" />
-                    </SelectTrigger>
+                  <Select value={newStatus} onValueChange={(value: Shipment["status"]) => setNewStatus(value)}>
+                    <SelectTrigger><SelectValue placeholder="Select new status" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="picked-up">Picked Up</SelectItem>
-                      <SelectItem value="in-transit">In Transit</SelectItem>
-                      <SelectItem value="delivered">Delivered</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                      {statusOptions.map((status) => (<SelectItem key={status} value={status}>{status}</SelectItem>))}
                     </SelectContent>
                   </Select>
                 </div>
-                <Button onClick={updateOrderStatus} className="w-full">
-                  Update Status
-                </Button>
+                <Button onClick={updateShipmentStatus} className="w-full">Update Status</Button>
               </CardContent>
             </Card>
           </TabsContent>

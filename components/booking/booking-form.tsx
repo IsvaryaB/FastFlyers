@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -42,14 +43,37 @@ export function BookingForm() {
     },
   })
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    // Simulate API call to generate tracking ID
-    const newTrackingId = Math.random().toString(36).substring(2, 12).toUpperCase()
-    setTrackingId(newTrackingId)
-    setIsSubmitted(true)
-    console.log("[v0] Booking details:", values)
-    console.log("[v0] Generated Tracking ID:", newTrackingId)
-    // In a real app, you would send this to a backend and get a real tracking ID
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/shipments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...values,
+          weight: parseFloat(values.weight), // Ensure weight is a number
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || "Failed to book shipment.")
+      }
+
+      const result = await response.json()
+      setTrackingId(result.trackingId)
+      setIsSubmitted(true)
+    } catch (err: any) {
+      setError(err.message)
+      console.error("Booking failed:", err)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const itemVariants = {
@@ -200,9 +224,14 @@ export function BookingForm() {
                 )}
               />
             </motion.div>
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
             <motion.div whileTap={{ scale: 0.98 }}>
-              <Button type="submit" className="gradient-primary w-full text-lg hover-lift">
-                Book Shipment
+              <Button type="submit" className="gradient-primary w-full text-lg hover-lift" disabled={isLoading}>
+                {isLoading ? "Booking..." : "Book Shipment"}
               </Button>
             </motion.div>
           </form>
